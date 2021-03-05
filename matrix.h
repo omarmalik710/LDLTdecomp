@@ -9,6 +9,8 @@ LD_pair cholDecomp_LD(double *A, int size);
 
 double *transpose(double *A, int size);
 
+double *transpose_blocks(double *A, int size, int blockSize);
+
 double *randHerm(int size);
 
 int isHerm(double *Matrix, int size);

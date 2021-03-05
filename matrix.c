@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 #include "matrix.h"
 
 LD_pair cholDecomp_LD(double *A, int size) {
 
     double *L = (double *)calloc(size*size,sizeof(double));
-    //double *L = A;
     double *D = (double *)malloc(size*sizeof(double));
 
     double time1, timeDj, timeLij;
@@ -37,8 +37,8 @@ LD_pair cholDecomp_LD(double *A, int size) {
         }
         timeLij = get_wall_seconds() - time1;
 
-        printf("[TIME] One Dj took %lf seconds.\n", timeDj);
-        printf("[TIME] One Lij took %lf seconds.\n", timeLij);
+        //printf("[TIME] One Dj took %lf seconds.\n", timeDj);
+        //printf("[TIME] One Lij took %lf seconds.\n", timeLij);
     }
 
     LD_pair LD;
@@ -53,6 +53,23 @@ double *transpose(double *A, int size) {
     for (int i=0; i<size; i++) {
         for (int j=0; j<size; j++) {
             AT[i+size*j] = A[j+size*i];
+        }
+    }
+
+    return AT;
+}
+
+double *transpose_blocks(double *A, int size, int blockSize) {
+
+    double *AT = (double *)calloc(size*size,sizeof(double));
+    int numBlocks = size/blockSize;
+    int istart;
+    for (int iBlock=0; iBlock<numBlocks; iBlock++) {
+        istart = iBlock*blockSize;
+        for (int j=0; j<size; j++) {
+            for (int i=istart; i<(istart+blockSize); i++) {
+                AT[i+size*j] = A[j+size*i];
+            }
         }
     }
 
@@ -88,15 +105,14 @@ int isHerm(double *Matrix, int size) {
 
 double *matMul(double *A, double *B, int size) {
     double *C = (double *)calloc(size*size,sizeof(double));
-    double C_ij;
+    double factor;
 
-    for (int i=0; i<size; i++) {
-        for (int j=0; j<size; j++) {
-            C_ij = 0.0;
-            for (int k=0; k<size; k++) {
-                C_ij += A[i+size*k]*B[k+size*j];
+    for (int j=0; j<size; j++) {
+        for (int k=0; k<size; k++) {
+            factor = B[k+size*j];
+            for (int i=0; i<size; i++) {
+                C[i+size*j] += A[i+size*k]*factor;
             }
-            C[i+size*j] = C_ij;
         }
     }
 
