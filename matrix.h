@@ -1,10 +1,11 @@
 #ifndef MATRIX_H
 #define MATRIX_H
-
 typedef struct LD_pair {
     double **L;
-    double **D;
+    double *D;
 } LD_pair;
+
+LD_pair cholDecomp_LD(double **A, int size);
 
 double **cholDecomp(double **A, int size);
 

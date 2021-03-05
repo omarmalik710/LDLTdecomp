@@ -4,49 +4,56 @@
 #include <math.h>
 #include "matrix.h"
 
+LD_pair cholDecomp_LD(double **A, int size) {
+    double **L = allocMatrix(size);
+    double *D = (double *)malloc(size*sizeof(double));
+
+    double Dj;
+    double Lij;
+    for (int j=0; j<size; j++) {
+        Dj = A[j][j];
+        for (int i=j+1; i<size; i++) {
+            Lij = A[i][j];
+            for (int k=0; k<j; k++) {
+                Dj -= L[j][k]*L[j][k];
+                Lij -= L[i][k]*L[j][k];
+            }
+            L[i][j] = Lij/Dj;
+        }
+        D[j] = Dj;
+    }
+
+    LD_pair LD;
+    LD.L = L;
+    LD.D = D;
+    return LD;
+}
+
 double **cholDecomp(double **A, int size) {
     double **L = allocMatrix(size);
 
     double Ljj;
     double Lij;
-    for (int j=0; j<size; j++) {
+    int i,j,k;
+    for (j=0; j<size; j++) {
         Ljj = A[j][j];
-        for (int i=j+1; i<size; i++) {
+        for (k=0; k<j; k++) {
+            Ljj -= L[j][k]*L[j][k];
+        }
+        Ljj = sqrt(Ljj);
+        L[j][j] = Ljj;
+
+        for (i=j+1; i<size; i++) {
             Lij = A[i][j];
-            for (int k=0; k<j; k++) {
-                Ljj -= L[j][k]*L[j][k];
-                printf("L[j][j] = %lf\n", Ljj);
+            for (k=0; k<j; k++) {
                 Lij -= L[i][k]*L[j][k];
             }
-            L[i][j] = Lij/sqrt(Ljj);
+            L[i][j] = Lij/Ljj;
         }
-        L[j][j] = sqrt(Ljj);
     }
 
     return L;
 }
-
-//double **cholDecomp(double **A, int size) {
-//    double **L = allocMatrix(size);
-//
-//    double Ljj;
-//    double Lij;
-//    for (int j=0; j<size; j++) {
-//        Ljj = A[j][j];
-//        for (int i=j+1; i<size; i++) {
-//            Lij = A[i][j];
-//            for (int k=0; k<j; k++) {
-//                Ljj -= L[j][k]*L[j][k];
-//                printf("L[j][j] = %lf\n", Ljj);
-//                Lij -= L[i][k]*L[j][k];
-//            }
-//            L[i][j] = Lij/sqrt(Ljj);
-//        }
-//        L[j][j] = sqrt(Ljj);
-//    }
-//
-//    return L;
-//}
 
 double **transpose(double **A, int size) {
     double **AT = allocMatrix(size);
