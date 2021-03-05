@@ -4,14 +4,14 @@
 
 int main() {
     int size = 5;
-    double **A = randHerm(size);
-    //double **L = cholDecomp(A, size);
-    //double **LT = transpose(L, size);
-    //double **LLT = matMul(L,LT, size);
+    double *A = randHerm(size);
+    //double *L = cholDecomp(A, size);
+    //double *LT = transpose(L, size);
+    //double *LLT = matMul(L,LT, size);
     LD_pair LD = cholDecomp_LD(A, size);
-    double **LxD = matMulDiag(LD.L, LD.D, size);
-    double **LT = transpose(LD.L, size);
-    double **LxDxLT = matMul(LxD,LT, size);
+    double *LxD = matMulDiag(LD.L, LD.D, size);
+    double *LT = transpose(LD.L, size);
+    double *LxDxLT = matMul(LxD,LT, size);
 
     printf("A =\n");
     printMatrix(A, size);
@@ -31,12 +31,12 @@ int main() {
         printf("A = L*D*LT :D\n");
     } else { printf("A != L*D*LT :(\n"); }
 
-    deleteMatrix(A, size);
-    deleteMatrix(LD.L, size);
+    free(A);
+    free(LD.L);
     free(LD.D);
-    deleteMatrix(LT, size);
-    deleteMatrix(LxD, size);
-    deleteMatrix(LxDxLT, size);
+    free(LT);
+    free(LxD);
+    free(LxDxLT);
 
     return 0;
 }
