@@ -5,14 +5,14 @@
 int main() {
     int size = 2000;
     double *A = randHerm(size);
+    //printf("A =\n");
+    //printMatrix(A, size);
+    //putchar('\n');
+
     LD_pair LD = cholDecomp_LD(A, size);
     double *LxD = matMulDiag(LD.L, LD.D, size);
     double *LT = transpose(LD.L, size);
     double *LxDxLT = matMul(LxD,LT, size);
-
-    //printf("A =\n");
-    //printMatrix(A, size);
-    //putchar('\n');
 
     //printf("L =\n");
     //printMatrix(LD.L, size);

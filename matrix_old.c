@@ -5,19 +5,18 @@
 #include "matrix.h"
 
 LD_pair cholDecomp_LD(double *A, int size) {
-
     double *L = (double *)calloc(size*size,sizeof(double));
-    //double *L = A;
     double *D = (double *)malloc(size*sizeof(double));
 
     double time1, timeDj, timeLij;
     double Dj;
-    double factor;
+    double Lij;
     int i,j,k;
     for (j=0; j<size; j++) {
+        L[j+size*j] = 1.0;
 
-        time1 = get_wall_seconds();
         Dj = A[j+size*j];
+        time1 = get_wall_seconds();
         for (k=0; k<j; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
@@ -25,15 +24,12 @@ LD_pair cholDecomp_LD(double *A, int size) {
         timeDj = get_wall_seconds() - time1;
 
         time1 = get_wall_seconds();
-        L[j+size*j] = 1.0;
-        for (k=0; k<j; k++) {
-            factor = L[j+size*k]*D[k];
-            for (i=j+1; i<size; i++) {
-                L[i+size*j] -= L[i+size*k]*factor;
-            }
-        }
         for (i=j+1; i<size; i++) {
-            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+            Lij = A[i+size*j];
+            for (k=0; k<j; k++) {
+                Lij -= L[i+size*k]*L[j+size*k]*D[k];
+            }
+            L[i+size*j] = Lij/Dj;
         }
         timeLij = get_wall_seconds() - time1;
 
