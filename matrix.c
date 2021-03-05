@@ -47,32 +47,6 @@ LD_pair cholDecomp_LD(double *A, int size) {
     return LD;
 }
 
-double *cholDecomp(double *A, int size) {
-    double *L = (double *)calloc(size*size,sizeof(double));
-
-    double Ljj;
-    double Lij;
-    int i,j,k;
-    for (j=0; j<size; j++) {
-        Ljj = A[j+size*j];
-        for (k=0; k<j; k++) {
-            Ljj -= L[j+size*k]*L[j+size*k];
-        }
-        Ljj = sqrt(Ljj);
-        L[j+size*j] = Ljj;
-
-        for (i=j+1; i<size; i++) {
-            Lij = A[i+size*j];
-            for (k=0; k<j; k++) {
-                Lij -= L[i+size*k]*L[j+size*k];
-            }
-            L[i+size*j] = Lij/Ljj;
-        }
-    }
-
-    return L;
-}
-
 double *transpose(double *A, int size) {
     double *AT = (double *)calloc(size*size,sizeof(double));
 

@@ -7,8 +7,6 @@ typedef struct LD_pair {
 
 LD_pair cholDecomp_LD(double *A, int size);
 
-double *cholDecomp(double *A, int size);
-
 double *transpose(double *A, int size);
 
 double *randHerm(int size);
