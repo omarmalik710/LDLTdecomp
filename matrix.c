@@ -10,17 +10,23 @@ LD_pair cholDecomp_LD(double **A, int size) {
 
     double Dj;
     double Lij;
-    for (int j=0; j<size; j++) {
+    int i,j,k;
+    for (j=0; j<size; j++) {
+        L[j][j] = 1.0;
+
         Dj = A[j][j];
-        for (int i=j+1; i<size; i++) {
+        for (k=0; k<j; k++) {
+            Dj -= L[j][k]*L[j][k]*D[k];
+        }
+        D[j] = Dj;
+
+        for (i=j+1; i<size; i++) {
             Lij = A[i][j];
-            for (int k=0; k<j; k++) {
-                Dj -= L[j][k]*L[j][k];
-                Lij -= L[i][k]*L[j][k];
+            for (k=0; k<j; k++) {
+                Lij -= L[i][k]*L[j][k]*D[k];
             }
             L[i][j] = Lij/Dj;
         }
-        D[j] = Dj;
     }
 
     LD_pair LD;
@@ -111,6 +117,20 @@ double **matMul(double **A, double **B, int size) {
     return C;
 }
 
+double **matMulDiag(double **A, double *D, int size) {
+    double **C = allocMatrix(size);
+    double Dj;
+
+    for (int j=0; j<size; j++) {
+        Dj = D[j];
+        for (int i=0; i<size; i++) {
+            C[i][j] = A[i][j]*Dj;
+        }
+    }
+
+    return C;
+}
+
 int matEqual(double **A, double **B, int size, double tol) {
     for (int i=0; i<size; i++) {
         for (int j=0; j<size; j++) {
@@ -126,7 +146,7 @@ int matEqual(double **A, double **B, int size, double tol) {
 double **allocMatrix(int size) {
     double **Matrix = (double **)malloc(size*sizeof(double *));
     for (int i=0; i<size; i++) {
-        Matrix[i] = (double *)malloc(size*sizeof(double));
+        Matrix[i] = (double *)calloc(size,sizeof(double));
     }
 
     return Matrix;
@@ -147,5 +167,11 @@ void deleteMatrix(double **Matrix, int size) {
         Matrix[i] = NULL;
     }
     free(Matrix);
-    Matrix = NULL;
+}
+
+void printArray(double *array, int size) {
+    for (int i=0; i<size; i++) {
+        printf("%10.6lf ", array[i]);
+    }
+    putchar('\n');
 }

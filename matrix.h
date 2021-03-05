@@ -17,6 +17,8 @@ int isHerm(double **Matrix, int size);
 
 double **matMul(double **A, double **B, int size);
 
+double **matMulDiag(double **A, double *D, int size);
+
 int matEqual(double **A, double **B, int size, double tol);
 
 double **allocMatrix(int size);
@@ -24,5 +26,7 @@ double **allocMatrix(int size);
 void printMatrix(double **Matrix, int size);
 
 void deleteMatrix(double **Matrix, int size);
+
+void printArray(double *array, int size);
 
 #endif
