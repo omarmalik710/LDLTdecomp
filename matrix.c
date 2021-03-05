@@ -8,6 +8,7 @@ LD_pair cholDecomp_LD(double *A, int size) {
     double *L = (double *)calloc(size*size,sizeof(double));
     double *D = (double *)malloc(size*sizeof(double));
 
+    double time1, timeDj, timeLij;
     double Dj;
     double Lij;
     int i,j,k;
@@ -15,11 +16,14 @@ LD_pair cholDecomp_LD(double *A, int size) {
         L[j+size*j] = 1.0;
 
         Dj = A[j+size*j];
+        time1 = get_wall_seconds();
         for (k=0; k<j; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
         D[j] = Dj;
+        timeDj = get_wall_seconds() - time1;
 
+        time1 = get_wall_seconds();
         for (i=j+1; i<size; i++) {
             Lij = A[i+size*j];
             for (k=0; k<j; k++) {
@@ -27,6 +31,10 @@ LD_pair cholDecomp_LD(double *A, int size) {
             }
             L[i+size*j] = Lij/Dj;
         }
+        timeLij = get_wall_seconds() - time1;
+
+        printf("[TIME] One Dj took %lf seconds.\n", timeDj);
+        printf("[TIME] One Lij took %lf seconds.\n", timeLij);
     }
 
     LD_pair LD;
@@ -157,4 +165,11 @@ void printArray(double *array, int size) {
         printf("%10.6lf ", array[i]);
     }
     putchar('\n');
+}
+
+double get_wall_seconds() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  double seconds = tv.tv_sec + (double)tv.tv_usec / 1000000;
+  return seconds;
 }

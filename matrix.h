@@ -25,4 +25,6 @@ void printMatrix(double *Matrix, int size);
 
 void printArray(double *array, int size);
 
+double get_wall_seconds();
+
 #endif
