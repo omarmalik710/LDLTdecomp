@@ -47,6 +47,58 @@ LD_pair cholDecomp_LD(double *A, int size) {
     return LD;
 }
 
+LD_pair cholDecomp_LD_blocks(double *A, int size, int blockSize) {
+
+    double *L = (double *)calloc(size*size,sizeof(double));
+    double *D = (double *)malloc(size*sizeof(double));
+
+    double time1, timeDj, timeLij;
+    double Dj;
+    double factor;
+    int iBlock, jBlock, kBlock;
+    int iStart, jStart, kStart;
+    int numBlocks = size/blockSize;
+    int i,j,k;
+    for (jBlock=0; jBlock<numBlocks; jBlock++) {
+        jStart = jBlock*blockSize;
+        for (kBlock=0; kBlock<=jBlock; kBlock++) {
+            kStart = kBlock*blockSize;
+            for (iBlock=jBlock; iBlock<numBlocks; iBlock++) {
+                iStart = iBlock*blockSize;
+                for (j=jStart; j<(jStart+blockSize); j++) {
+
+                    Dj = A[j+size*j];
+                    for (k=kStart; k<(kStart+blockSize) && k<j; k++) {
+                        Dj -= L[j+size*k]*L[j+size*k]*D[k];
+                    }
+                    D[j] = Dj;
+
+                    L[j+size*j] = 1.0;
+                    for (k=kStart; k<(kStart+blockSize) && k<j; k++) {
+                        factor = L[j+size*k]*D[k];
+                        for (i=iStart; i<(iStart+blockSize); i++) {
+                            if (i<=j) { continue; }
+                            L[i+size*j] -= L[i+size*k]*factor;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (j=0; j<size; j++) {
+        Dj = D[j];
+        for (i=j+1; i<size; i++) {
+            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+        }
+    }
+
+    LD_pair LD;
+    LD.L = L;
+    LD.D = D;
+    return LD;
+}
+
 double *transpose(double *A, int size) {
     double *AT = (double *)calloc(size*size,sizeof(double));
 
@@ -63,11 +115,11 @@ double *transpose_blocks(double *A, int size, int blockSize) {
 
     double *AT = (double *)calloc(size*size,sizeof(double));
     int numBlocks = size/blockSize;
-    int istart;
+    int iStart;
     for (int iBlock=0; iBlock<numBlocks; iBlock++) {
-        istart = iBlock*blockSize;
+        iStart = iBlock*blockSize;
         for (int j=0; j<size; j++) {
-            for (int i=istart; i<(istart+blockSize); i++) {
+            for (int i=iStart; i<(iStart+blockSize); i++) {
                 AT[i+size*j] = A[j+size*i];
             }
         }
