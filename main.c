@@ -6,17 +6,17 @@
 int main() {
     double time1, time2;
 
-    int size = 2000;
-    int blockSize = 16;
+    int size = 10;
+    int blockSize = 2;
     if (size%blockSize != 0) {
         printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
         exit(1);
     }
 
     double *A = randHerm(size);
-    //printf("A =\n");
-    //printMatrix(A, size);
-    //putchar('\n');
+    printf("A =\n");
+    printMatrix(A, size);
+    putchar('\n');
 
     //LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
     LD_pair LD = cholDecomp_LD(A, size);
@@ -32,8 +32,8 @@ int main() {
     //printf("D = \n");
     //printArray(LD.D, size);
 
-    //printf("L*D*LT =\n");
-    //printMatrix(LxDxLT, size);
+    printf("L*D*LT =\n");
+    printMatrix(LxDxLT, size);
 
     if (matEqual(A, LxDxLT, size, 1e-12)) {
         printf("A = L*D*LT :D\n");

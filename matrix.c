@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
-#include <assert.h>
 #include "matrix.h"
 
 LD_pair cholDecomp_LD(double *A, int size) {
@@ -14,83 +13,54 @@ LD_pair cholDecomp_LD(double *A, int size) {
     double Dj;
     double factor;
     int i,j,k;
+    int unrollFact = 4;
+    int iRemain;
+    int kRemain;
     for (j=0; j<size; j++) {
 
         time1 = get_wall_seconds();
+        kRemain = j%unrollFact;
         Dj = A[j+size*j];
-        for (k=0; k<j; k++) {
+        for (k=0; k<kRemain; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
+        }
+        for (k; k<j; k+=unrollFact) {
+            Dj -= L[j+size*k]*L[j+size*k]*D[k];
+            Dj -= L[j+size*(k+1)]*L[j+size*(k+1)]*D[k+1];
+            Dj -= L[j+size*(k+2)]*L[j+size*(k+2)]*D[k+2];
+            Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
         }
         D[j] = Dj;
         timeDj = get_wall_seconds() - time1;
 
         time1 = get_wall_seconds();
+        iRemain = (size-(j+1))%unrollFact;
         L[j+size*j] = 1.0;
         for (k=0; k<j; k++) {
             factor = L[j+size*k]*D[k];
-            for (i=j+1; i<size; i++) {
+            for (i=j+1; i<(iRemain+(j+1)); i++) {
                 L[i+size*j] -= L[i+size*k]*factor;
             }
+            for (i; i<size; i+=unrollFact) {
+                L[i+size*j] -= L[i+size*k]*factor;
+                L[i+1+size*j] -= L[i+1+size*k]*factor;
+                L[i+2+size*j] -= L[i+2+size*k]*factor;
+                L[i+3+size*j] -= L[i+3+size*k]*factor;
+            }
         }
-        for (i=j+1; i<size; i++) {
+        for (i=j+1; i<(iRemain+(j+1)); i++) {
             L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+        }
+        for (i; i<size; i+=unrollFact) {
+            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+            L[(i+1)+size*j] = (L[(i+1)+size*j] + A[(i+1)+size*j])/Dj;
+            L[(i+2)+size*j] = (L[(i+2)+size*j] + A[(i+2)+size*j])/Dj;
+            L[(i+3)+size*j] = (L[(i+3)+size*j] + A[(i+3)+size*j])/Dj;
         }
         timeLij = get_wall_seconds() - time1;
 
-        //printf("[TIME] One Dj took %lf seconds.\n", timeDj);
-        //printf("[TIME] One Lij took %lf seconds.\n", timeLij);
-    }
-
-    LD_pair LD;
-    LD.L = L;
-    LD.D = D;
-    return LD;
-}
-
-LD_pair cholDecomp_LD_blocks(double *A, int size, int blockSize) {
-
-    double *L = (double *)calloc(size*size,sizeof(double));
-    double *D = (double *)malloc(size*sizeof(double));
-
-    double time1, timeDj, timeLij;
-    double Dj;
-    double factor;
-    int iBlock, jBlock, kBlock;
-    int iStart, jStart, kStart;
-    int numBlocks = size/blockSize;
-    int i,j,k;
-    for (jBlock=0; jBlock<numBlocks; jBlock++) {
-        jStart = jBlock*blockSize;
-        for (kBlock=0; kBlock<=jBlock; kBlock++) {
-            kStart = kBlock*blockSize;
-            for (iBlock=jBlock; iBlock<numBlocks; iBlock++) {
-                iStart = iBlock*blockSize;
-                for (j=jStart; j<(jStart+blockSize); j++) {
-
-                    Dj = A[j+size*j];
-                    for (k=kStart; k<(kStart+blockSize) && k<j; k++) {
-                        Dj -= L[j+size*k]*L[j+size*k]*D[k];
-                    }
-                    D[j] = Dj;
-
-                    L[j+size*j] = 1.0;
-                    for (k=kStart; k<(kStart+blockSize) && k<j; k++) {
-                        factor = L[j+size*k]*D[k];
-                        for (i=iStart; i<(iStart+blockSize); i++) {
-                            if (i<=j) { continue; }
-                            L[i+size*j] -= L[i+size*k]*factor;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (j=0; j<size; j++) {
-        Dj = D[j];
-        for (i=j+1; i<size; i++) {
-            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
-        }
+        printf("[TIME] One Dj took %lf seconds.\n", timeDj);
+        printf("[TIME] One Lij took %lf seconds.\n", timeLij);
     }
 
     LD_pair LD;
