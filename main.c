@@ -3,22 +3,35 @@
 #include <time.h>
 #include "matrix.h"
 
-int main() {
+int main(int argc, char **argv) {
     double time1, time2;
 
-    int size = 2e3;
-    int blockSize = 16;
-    //if (size%blockSize != 0) {
-    //    printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
-    //    exit(1);
-    //}
+    int size;
+    int blockSize;
+    switch (argc) {
+        case 2:
+            size = atoi(argv[1]);
+            blockSize = 16;
+            break;
+        case 3:
+            size = atoi(argv[1]);
+            blockSize = atoi(argv[2]);
+            break;
+        default:
+            size = 2e3;
+            blockSize = 16;
+    }
+    if (size%blockSize != 0) {
+        printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
+        exit(1);
+    }
 
     //double* restrict A __attribute__((aligned (XMM_ALIGNMENT_BYTES)));
 
     double *A = randHerm(size);
     time1 = get_wall_seconds();
-    LD_pair LD = LDLTdecomp(A, size);
-    //LD_pair LD = LDLTdecomp_blocks(A, size, blockSize);
+    //LD_pair LD = LDLTdecomp(A, size);
+    LD_pair LD = LDLTdecomp_blocks(A, size, blockSize);
     time2 = get_wall_seconds();
     printf("%lf\n", time2-time1);
     //double *LxD = matMulDiag(LD.L, LD.D, size);
