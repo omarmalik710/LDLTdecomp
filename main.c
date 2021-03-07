@@ -6,29 +6,38 @@
 int main() {
     double time1, time2;
 
-    int size = 2000;
+    int size = 2e3;
     int blockSize = 16;
-    if (size%blockSize != 0) {
-        printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
-        exit(1);
-    }
+    //if (size%blockSize != 0) {
+    //    printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
+    //    exit(1);
+    //}
+
+    //double* restrict A __attribute__((aligned (XMM_ALIGNMENT_BYTES)));
 
     double *A = randHerm(size);
+    time1 = get_wall_seconds();
+    LD_pair LD = LDLTdecomp(A, size);
+    //LD_pair LD = LDLTdecomp_blocks(A, size, blockSize);
+    time2 = get_wall_seconds();
+    printf("%lf\n", time2-time1);
+    //double *LxD = matMulDiag(LD.L, LD.D, size);
+    //double *LT = transpose(LD.L, size);
+    //double *LxDxLT = matMul(LxD,LT, size);
+    //double *LxD = matMulDiag_blocks(LD.L, LD.D, size, blockSize);
+    //double *LT = transpose_blocks(LD.L, size, blockSize);
+    //double *LxDxLT = matMul_blocks(LxD,LT, size, blockSize);
+
     //printf("A =\n");
     //printMatrix(A, size);
     //putchar('\n');
 
-    //LD_pair LD = cholDecomp_LD(A, size);
-    LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
-    //double *LxD = matMulDiag(LD.L, LD.D, size);
-    //double *LT = transpose(LD.L, size);
-    //double *LxDxLT = matMul(LxD,LT, size);
-    double *LxD = matMulDiag_blocks(LD.L, LD.D, size, blockSize);
-    double *LT = transpose_blocks(LD.L, size, blockSize);
-    double *LxDxLT = matMul_blocks(LxD,LT, size, blockSize);
-
     //printf("L =\n");
     //printMatrix(LD.L, size);
+    //putchar('\n');
+
+    //printf("LT = \n");
+    //printMatrix(LT, size);
     //putchar('\n');
 
     //printf("D = \n");
@@ -37,20 +46,20 @@ int main() {
     //printf("L*D*LT =\n");
     //printMatrix(LxDxLT, size);
 
-    if (matEqual(A, LxDxLT, size, 1e-12)) {
-        printf("A = L*D*LT :D\n");
-    } else { printf("A != L*D*LT :(\n"); }
+    //if (matEqual(A, LxDxLT, size, 1e-12)) {
+    //    printf("A = L*D*LT :D\n");
+    //} else { printf("A != L*D*LT :(\n"); }
 
     free(A);
     free(LD.L);
     free(LD.D);
-    free(LT);
-    free(LxD);
-    free(LxDxLT);
+    //free(LT);
+    //free(LxD);
+    //free(LxDxLT);
 
     //int size = 5;
     //double *A = randHerm(size);
-    //double *L = cholDecomp(A, size);
+    //double *L = LDLTdecomp(A, size);
     //double *LT = transpose(L, size);
     //double *LLT = matMul(L,LT, size);
 
