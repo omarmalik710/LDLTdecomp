@@ -3,6 +3,7 @@
 #include <time.h>
 #include <math.h>
 #include <pmmintrin.h>
+#include <pthread.h>
 #include "matrix.h"
 
 LD_pair LDLTdecomp(double* restrict A, const int size) {
