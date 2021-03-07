@@ -58,9 +58,88 @@ LD_pair cholDecomp_LD(double *A, int size) {
             L[(i+3)+size*j] = (L[(i+3)+size*j] + A[(i+3)+size*j])/Dj;
         }
         timeLij = get_wall_seconds() - time1;
+    }
 
-        printf("[TIME] One Dj took %lf seconds.\n", timeDj);
-        printf("[TIME] One Lij took %lf seconds.\n", timeLij);
+    LD_pair LD;
+    LD.L = L;
+    LD.D = D;
+    return LD;
+}
+
+LD_pair cholDecomp_LD_blocks(double *A, int size, int blockSize) {
+
+    int unrollFact = 4;
+    if (blockSize%unrollFact != 0) {
+        printf("[ERROR] Size of cache block (%d) not divisible"
+               "by the loop unroll factor (%d)!\n", blockSize, unrollFact);
+        exit(1);
+    }
+    double *L = (double *)calloc(size*size,sizeof(double));
+    double *D = (double *)malloc(size*sizeof(double));
+
+    double time1, timeDj, timeLij;
+    double Dj, Lij;
+    double factor;
+    int numBlocks, blockRemain;
+    int iBlock, iStart;
+    int i,j,k;
+    int iRemain, kRemain;
+    for (j=0; j<size; j++) {
+
+        time1 = get_wall_seconds();
+        kRemain = j%unrollFact;
+        Dj = A[j+size*j];
+        for (k=0; k<kRemain; k++) {
+            Dj -= L[j+size*k]*L[j+size*k]*D[k];
+        }
+        for (k; k<j; k+=unrollFact) {
+            Dj -= L[j+size*k]*L[j+size*k]*D[k];
+            Dj -= L[j+size*(k+1)]*L[j+size*(k+1)]*D[k+1];
+            Dj -= L[j+size*(k+2)]*L[j+size*(k+2)]*D[k+2];
+            Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
+        }
+        D[j] = Dj;
+        timeDj = get_wall_seconds() - time1;
+
+        time1 = get_wall_seconds();
+        L[j+size*j] = 1.0;
+        numBlocks = (size-(j+1))/blockSize;
+        blockRemain = (size-(j+1))%blockSize;
+
+        for (k=0; k<j; k++) {
+            factor = L[j+size*k]*D[k];
+
+            // Loop over the block remainder first. If block
+            // remainder is 0, then this nested loop is skipped.
+            for (i=j+1; i<((j+1)+blockRemain); i++) {
+                L[i+size*j] -= L[i+size*k]*factor;
+            }
+
+            // Loop over the blocks from "(j+1) + block remainder" to
+            // the last row. If block remainder is 0, then this nested
+            // loop starts from j+1 instead.
+            for (iBlock=0; iBlock<numBlocks; iBlock++) {
+                iStart=iBlock*blockSize + ((j+1)+blockRemain);
+                for (i=iStart; i<(iStart+blockSize); i+=unrollFact) {
+                    L[i+size*j] -= L[i+size*k]*factor;
+                    L[(i+1)+size*j] -= L[(i+1)+size*k]*factor;
+                    L[(i+2)+size*j] -= L[(i+2)+size*k]*factor;
+                    L[(i+3)+size*j] -= L[(i+3)+size*k]*factor;
+                }
+            }
+        }
+
+        iRemain = (size-(j+1))%unrollFact;
+        for (i=j+1; i<(iRemain+(j+1)); i++) {
+            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+        }
+        for (i; i<size; i+=unrollFact) {
+            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
+            L[(i+1)+size*j] = (L[(i+1)+size*j] + A[(i+1)+size*j])/Dj;
+            L[(i+2)+size*j] = (L[(i+2)+size*j] + A[(i+2)+size*j])/Dj;
+            L[(i+3)+size*j] = (L[(i+3)+size*j] + A[(i+3)+size*j])/Dj;
+        }
+        timeLij = get_wall_seconds() - time1;
     }
 
     LD_pair LD;
@@ -141,6 +220,35 @@ double *matMul(double *A, double *B, int size) {
     return C;
 }
 
+double *matMul_blocks(double *A, double *B, int size, int blockSize) {
+    double *C = (double *)calloc(size*size,sizeof(double));
+
+    int numBlocks = size/blockSize;
+    int iBlock, jBlock, kBlock;
+    int iStart, jStart, kStart;
+    int i,j,k;
+    double factor;
+    for (jBlock=0; jBlock<numBlocks; jBlock++) {
+        jStart = jBlock*blockSize;
+        for (kBlock=0; kBlock<numBlocks; kBlock++) {
+            kStart = kBlock*blockSize;
+            for (iBlock=0; iBlock<numBlocks; iBlock++) {
+                iStart = iBlock*blockSize;
+                for (j=jStart; j<(jStart+blockSize); j++) {
+                    for (k=kStart; k<(kStart+blockSize); k++) {
+                        factor = B[k+size*j];
+                        for (i=iStart; i<(iStart+blockSize); i++) {
+                            C[i+size*j] += A[i+size*k]*factor;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return C;
+}
+
 double *matMulDiag(double *A, double *D, int size) {
     double *C = (double *)calloc(size*size,sizeof(double));
     double Dj;
@@ -149,6 +257,30 @@ double *matMulDiag(double *A, double *D, int size) {
         Dj = D[j];
         for (int i=0; i<size; i++) {
             C[i+size*j] = A[i+size*j]*Dj;
+        }
+    }
+
+    return C;
+}
+
+double *matMulDiag_blocks(double *A, double *D, int size, int blockSize) {
+    double *C = (double *)calloc(size*size,sizeof(double));
+
+    int numBlocks = size/blockSize;
+    int iBlock, jBlock;
+    int iStart, jStart;
+    int i,j;
+    double Dj;
+    for (jBlock=0; jBlock<numBlocks; jBlock++) {
+        jStart = jBlock*blockSize;
+        for (iBlock=0; iBlock<numBlocks; iBlock++) {
+            iStart = iBlock*blockSize;
+            for (j=jStart; j<(jStart+blockSize); j++) {
+                Dj = D[j];
+                for (i=iStart; i<(iStart+blockSize); i++) {
+                    C[i+size*j] = A[i+size*j]*Dj;
+                }
+            }
         }
     }
 

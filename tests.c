@@ -4,14 +4,56 @@
 #include "matrix.h"
 
 int main() {
-    int size = 2000;
-    int blockSize = 32;
+
     double time1, time2;
-    double *A = randHerm(size);
+
+    int size = 16000000;
+    int blockSize = 16, numBlocks = size/blockSize;
+    int iBlock, iStart;
+    int unrollFact = 4;
+    int *array = (int *)malloc(size*sizeof(int));
+    int i;
     time1 = get_wall_seconds();
-    double *AT = transpose_blocks(A, size, blockSize);
+    for (i=0; i<size; i+=unrollFact) {
+        array[i] += 10*i;
+        array[i+1] += 10*(i+1);
+        array[i+2] += 10*(i+2);
+        array[i+3] += 10*(i+3);
+    }
     time2 = get_wall_seconds();
-    printf("[INFO] Transpose w/ block size %d took %lf seconds.\n", blockSize, time2-time1);
+    printf("[TIME] Loop unrolling took %lf seconds.\n", time2-time1);
+
+    time1 = get_wall_seconds();
+    for (iBlock=0; iBlock<numBlocks; iBlock++) {
+        iStart = iBlock*blockSize;
+        for (i=iStart; i<(iStart+blockSize); i++) {
+            array[i] += 10*i;
+        }
+    }
+    time2 = get_wall_seconds();
+    printf("[TIME] Blocking took %lf seconds.\n", time2-time1);
+
+    time1 = get_wall_seconds();
+    for (iBlock=0; iBlock<numBlocks; iBlock++) {
+        iStart = iBlock*blockSize;
+        for (i=iStart; i<(iStart+blockSize); i+=unrollFact) {
+            array[i] += 10*i;
+            array[i+1] += 10*(i+1);
+            array[i+2] += 10*(i+2);
+            array[i+3] += 10*(i+3);
+        }
+    }
+    time2 = get_wall_seconds();
+    printf("[TIME] Blocking with loop unrolling took %lf seconds.\n", time2-time1);
+    free(array);
+
+    //int blockSize = 32;
+    //double time1, time2;
+    //double *A = randHerm(size);
+    //time1 = get_wall_seconds();
+    //double *AT = transpose_blocks(A, size, blockSize);
+    //time2 = get_wall_seconds();
+    //printf("[INFO] Transpose w/ block size %d took %lf seconds.\n", blockSize, time2-time1);
     //double *L = (double *)calloc(size*size,sizeof(double));
 
     //int i,j,k;
