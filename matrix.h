@@ -6,7 +6,7 @@ typedef struct LD_pair {
 } LD_pair;
 
 #define ELEMS_PER_REG 2
-#define UNROLL_FACT 4
+#define UNROLL_FACT 5
 
 LD_pair LDLTdecomp(double* restrict A, const int size);
 

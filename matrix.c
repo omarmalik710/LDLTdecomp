@@ -32,6 +32,7 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
             Dj -= L[j+size*(k+1)]*L[j+size*(k+1)]*D[k+1];
             Dj -= L[j+size*(k+2)]*L[j+size*(k+2)]*D[k+2];
             Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
+            Dj -= L[j+size*(k+4)]*L[j+size*(k+4)]*D[k+4];
         }
         D[j] = Dj;
         //timeDj = get_wall_seconds() - time1;
@@ -86,7 +87,7 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
 LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSize) {
 
     if (blockSize%UNROLL_FACT != 0) {
-        printf("[ERROR] Size of cache block (%d) not divisible"
+        printf("[ERROR] Size of cache block (%d) not divisible "
                "by the loop unroll factor (%d)!\n", blockSize, UNROLL_FACT);
         exit(1);
     }
@@ -124,6 +125,7 @@ LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSiz
             Dj -= L[j+size*(k+1)]*L[j+size*(k+1)]*D[k+1];
             Dj -= L[j+size*(k+2)]*L[j+size*(k+2)]*D[k+2];
             Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
+            Dj -= L[j+size*(k+4)]*L[j+size*(k+4)]*D[k+4];
         }
         D[j] = Dj;
         timeDj = get_wall_seconds() - time1;
