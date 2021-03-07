@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <pmmintrin.h>
 #include "matrix.h"
 
 LD_pair cholDecomp_LD(double *A, int size) {
