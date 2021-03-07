@@ -13,11 +13,9 @@ int main() {
         exit(1);
     }
 
-    double *A = randHerm(size);
-    //printf("A =\n");
-    //printMatrix(A, size);
-    //putchar('\n');
+    //double* restrict A __attribute__((aligned (XMM_ALIGNMENT_BYTES)));
 
+    double *A = randHerm(size);
     LD_pair LD = cholDecomp_LD(A, size);
     //LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
     //double *LxD = matMulDiag(LD.L, LD.D, size);
@@ -27,8 +25,16 @@ int main() {
     double *LT = transpose_blocks(LD.L, size, blockSize);
     double *LxDxLT = matMul_blocks(LxD,LT, size, blockSize);
 
+    //printf("A =\n");
+    //printMatrix(A, size);
+    //putchar('\n');
+
     //printf("L =\n");
     //printMatrix(LD.L, size);
+    //putchar('\n');
+
+    //printf("LT = \n");
+    //printMatrix(LT, size);
     //putchar('\n');
 
     //printf("D = \n");

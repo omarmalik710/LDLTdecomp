@@ -15,19 +15,16 @@ LD_pair cholDecomp_LD(double* restrict A, const int size) {
     double factor;
 
     __m128d factor_v;
-    __m128d diff_v;
-    __m128d sum_v;
-    __m128d Lij_v, Lik_v;
+    __m128d Aij_v[2], Lij_v[2], Lik_v[2];
 
     int i,j,k;
-    int iRemain;
-    int kRemain;
+    int iVectRemain, kUnRollRemain;
     for (j=0; j<size; j++) {
 
-        time1 = get_wall_seconds();
-        kRemain = j%UNROLL_FACT;
+        //time1 = get_wall_seconds();
+        kUnRollRemain = j%UNROLL_FACT;
         Dj = A[j+size*j];
-        for (k=0; k<kRemain; k++) {
+        for (k=0; k<kUnRollRemain; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
         for (k; k<j; k+=UNROLL_FACT) {
@@ -37,34 +34,47 @@ LD_pair cholDecomp_LD(double* restrict A, const int size) {
             Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
         }
         D[j] = Dj;
-        timeDj = get_wall_seconds() - time1;
+        //timeDj = get_wall_seconds() - time1;
 
-        time1 = get_wall_seconds();
-        //iRemain = (size-(j+1))%UNROLL_FACT;
-        iRemain = (size-(j+1))%ELEMS_PER_REG;
+        //time1 = get_wall_seconds();
+        iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
         L[j+size*j] = 1.0;
         for (k=0; k<j; k++) {
             factor = L[j+size*k]*D[k];
-            for (i=j+1; i<(iRemain+(j+1)); i++) {
+            factor_v = _mm_set1_pd(factor);
+            for (i=j+1; i<(iVectRemain+(j+1)); i++) {
                 L[i+size*j] -= L[i+size*k]*factor;
             }
-            for (i; i<size; i+=UNROLL_FACT) {
-                L[i+size*j] -= L[i+size*k]*factor;
-                L[i+1+size*j] -= L[i+1+size*k]*factor;
-                L[i+2+size*j] -= L[i+2+size*k]*factor;
-                L[i+3+size*j] -= L[i+3+size*k]*factor;
+            for (i; i<size; i+=(2*ELEMS_PER_REG)) {
+                Lij_v[0] = _mm_load_pd(L+(i+size*j));
+                Lik_v[0] = _mm_load_pd(L+(i+size*k));
+                Lij_v[0] = _mm_sub_pd(Lij_v[0], _mm_mul_pd(Lik_v[0],factor_v));
+                _mm_store_pd(L+(i+size*j), Lij_v[0]);
+
+                Lij_v[1] = _mm_load_pd(L+(i+size*j)+ELEMS_PER_REG);
+                Lik_v[1] = _mm_load_pd(L+(i+size*k)+ELEMS_PER_REG);
+                Lij_v[1] = _mm_sub_pd(Lij_v[1], _mm_mul_pd(Lik_v[1],factor_v));
+                _mm_store_pd(L+(i+size*j)+ELEMS_PER_REG, Lij_v[1]);
             }
         }
-        for (i=j+1; i<(iRemain+(j+1)); i++) {
+
+        iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
+        factor_v = _mm_set1_pd(Dj);
+        for (i=j+1; i<(iVectRemain+(j+1)); i++) {
             L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
         }
-        for (i; i<size; i+=UNROLL_FACT) {
-            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
-            L[(i+1)+size*j] = (L[(i+1)+size*j] + A[(i+1)+size*j])/Dj;
-            L[(i+2)+size*j] = (L[(i+2)+size*j] + A[(i+2)+size*j])/Dj;
-            L[(i+3)+size*j] = (L[(i+3)+size*j] + A[(i+3)+size*j])/Dj;
+        for (i; i<size; i+=(2*ELEMS_PER_REG)) {
+            Lij_v[0] = _mm_load_pd(L+(i+size*j));
+            Aij_v[0] = _mm_load_pd(A+(i+size*j));
+            Lij_v[0] = _mm_div_pd(_mm_add_pd(Lij_v[0],Aij_v[0]), factor_v);
+            _mm_store_pd(L+(i+size*j), Lij_v[0]);
+
+            Lij_v[1] = _mm_load_pd(L+(i+size*j)+ELEMS_PER_REG);
+            Aij_v[1] = _mm_load_pd(A+(i+size*j)+ELEMS_PER_REG);
+            Lij_v[1] = _mm_div_pd(_mm_add_pd(Lij_v[1],Aij_v[1]), factor_v);
+            _mm_store_pd(L+(i+size*j)+ELEMS_PER_REG, Lij_v[1]);
         }
-        timeLij = get_wall_seconds() - time1;
+        //timeLij = get_wall_seconds() - time1;
     }
 
     LD_pair LD;
@@ -80,22 +90,33 @@ LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int block
                "by the loop unroll factor (%d)!\n", blockSize, UNROLL_FACT);
         exit(1);
     }
+    if (blockSize%ELEMS_PER_REG != 0) {
+        printf("[ERROR] Size of cache block (%d) not divisible"
+               "by the number of elements per vector register! (%d)!\n",
+               blockSize, ELEMS_PER_REG);
+        exit(1);
+    }
     double *L = (double *)calloc(size*size,sizeof(double));
     double *D = (double *)malloc(size*sizeof(double));
 
     double time1, timeDj, timeLij;
     double Dj, Lij;
     double factor;
+
     int numBlocks, blockRemain;
     int iBlock, iStart;
+
+    __m128d factor_v;
+    __m128d Aij_v[2], Lij_v[2], Lik_v[2];
+
     int i,j,k;
-    int iRemain, kRemain;
+    int iVectRemain, kUnrollRemain;
     for (j=0; j<size; j++) {
 
         time1 = get_wall_seconds();
-        kRemain = j%UNROLL_FACT;
+        kUnrollRemain = j%UNROLL_FACT;
         Dj = A[j+size*j];
-        for (k=0; k<kRemain; k++) {
+        for (k=0; k<kUnrollRemain; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
         for (k; k<j; k+=UNROLL_FACT) {
@@ -113,10 +134,10 @@ LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int block
         blockRemain = (size-(j+1))%blockSize;
 
         for (k=0; k<j; k++) {
-            factor = L[j+size*k]*D[k];
 
             // Loop over the block remainder first. If block
             // remainder is 0, then this nested loop is skipped.
+            factor = L[j+size*k]*D[k];
             for (i=j+1; i<((j+1)+blockRemain); i++) {
                 L[i+size*j] -= L[i+size*k]*factor;
             }
@@ -124,26 +145,38 @@ LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int block
             // Loop over the blocks from "(j+1) + block remainder" to
             // the last row. If block remainder is 0, then this nested
             // loop starts from j+1 instead.
+            factor_v = _mm_set1_pd(factor);
             for (iBlock=0; iBlock<numBlocks; iBlock++) {
                 iStart=iBlock*blockSize + ((j+1)+blockRemain);
-                for (i=iStart; i<(iStart+blockSize); i+=UNROLL_FACT) {
-                    L[i+size*j] -= L[i+size*k]*factor;
-                    L[(i+1)+size*j] -= L[(i+1)+size*k]*factor;
-                    L[(i+2)+size*j] -= L[(i+2)+size*k]*factor;
-                    L[(i+3)+size*j] -= L[(i+3)+size*k]*factor;
+                for (i=iStart; i<(iStart+blockSize); i+=(2*ELEMS_PER_REG)) {
+                    Lij_v[0] = _mm_load_pd(L+(i+size*j));
+                    Lik_v[0] = _mm_load_pd(L+(i+size*k));
+                    Lij_v[0] = _mm_sub_pd(Lij_v[0], _mm_mul_pd(Lik_v[0],factor_v));
+                    _mm_store_pd(L+(i+size*j), Lij_v[0]);
+
+                    Lij_v[1] = _mm_load_pd(L+(i+size*j)+ELEMS_PER_REG);
+                    Lik_v[1] = _mm_load_pd(L+(i+size*k)+ELEMS_PER_REG);
+                    Lij_v[1] = _mm_sub_pd(Lij_v[1], _mm_mul_pd(Lik_v[1],factor_v));
+                    _mm_store_pd(L+(i+size*j)+ELEMS_PER_REG, Lij_v[1]);
                 }
             }
         }
 
-        iRemain = (size-(j+1))%UNROLL_FACT;
-        for (i=j+1; i<(iRemain+(j+1)); i++) {
+        iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
+        factor_v = _mm_set1_pd(Dj);
+        for (i=j+1; i<(iVectRemain+(j+1)); i++) {
             L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
         }
-        for (i; i<size; i+=UNROLL_FACT) {
-            L[i+size*j] = (L[i+size*j] + A[i+size*j])/Dj;
-            L[(i+1)+size*j] = (L[(i+1)+size*j] + A[(i+1)+size*j])/Dj;
-            L[(i+2)+size*j] = (L[(i+2)+size*j] + A[(i+2)+size*j])/Dj;
-            L[(i+3)+size*j] = (L[(i+3)+size*j] + A[(i+3)+size*j])/Dj;
+        for (i; i<size; i+=(2*ELEMS_PER_REG)) {
+            Lij_v[0] = _mm_load_pd(L+(i+size*j));
+            Aij_v[0] = _mm_load_pd(A+(i+size*j));
+            Lij_v[0] = _mm_div_pd(_mm_add_pd(Lij_v[0],Aij_v[0]), factor_v);
+            _mm_store_pd(L+(i+size*j), Lij_v[0]);
+
+            Lij_v[1] = _mm_load_pd(L+(i+size*j)+ELEMS_PER_REG);
+            Aij_v[1] = _mm_load_pd(A+(i+size*j)+ELEMS_PER_REG);
+            Lij_v[1] = _mm_div_pd(_mm_add_pd(Lij_v[1],Aij_v[1]), factor_v);
+            _mm_store_pd(L+(i+size*j)+ELEMS_PER_REG, Lij_v[1]);
         }
         timeLij = get_wall_seconds() - time1;
     }
@@ -184,7 +217,7 @@ double *transpose_blocks(double* restrict A, const int size, const int blockSize
 }
 
 double *randHerm(const int size) {
-    double* Matrix = (double *)calloc(size*size,sizeof(double));
+    double* Matrix = (double *) malloc(size*size*sizeof(double));
 
     time_t t;
     srand((unsigned) time(&t));
