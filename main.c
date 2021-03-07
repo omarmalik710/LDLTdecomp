@@ -18,8 +18,8 @@ int main() {
     //printMatrix(A, size);
     //putchar('\n');
 
-    //LD_pair LD = cholDecomp_LD(A, size);
-    LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
+    LD_pair LD = cholDecomp_LD(A, size);
+    //LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
     //double *LxD = matMulDiag(LD.L, LD.D, size);
     //double *LT = transpose(LD.L, size);
     //double *LxDxLT = matMul(LxD,LT, size);

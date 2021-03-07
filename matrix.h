@@ -5,31 +5,34 @@ typedef struct LD_pair {
     double *D;
 } LD_pair;
 
-LD_pair cholDecomp_LD(double *A, int size);
+#define ELEMS_PER_REG 2
+#define UNROLL_FACT 4
 
-LD_pair cholDecomp_LD_blocks(double *A, int size, int blockSize);
+LD_pair cholDecomp_LD(double* restrict A, const int size);
 
-double *transpose(double *A, int size);
+LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int blockSize);
 
-double *transpose_blocks(double *A, int size, int blockSize);
+double *transpose(double* restrict A, const int size);
 
-double *randHerm(int size);
+double *transpose_blocks(double* restrict A, const int size, const int blockSize);
 
-int isHerm(double *Matrix, int size);
+double *randHerm(const int size);
 
-double *matMul(double *A, double *B, int size);
+int isHerm(double* restrict Matrix, const int size);
 
-double *matMul_blocks(double *A, double *B, int size, int blockSize);
+double *matMul(double* restrict A, double* restrict B, const int size);
 
-double *matMulDiag(double *A, double *D, int size);
+double *matMul_blocks(double* restrict A, double* restrict B, const int size, const int blockSize);
 
-double *matMulDiag_blocks(double *A, double *D, int size, int blockSize);
+double *matMulDiag(double* restrict A, double *D, const int size);
 
-int matEqual(double *A, double *B, int size, double tol);
+double *matMulDiag_blocks(double* restrict A, double *D, const int size, const int blockSize);
 
-void printMatrix(double *Matrix, int size);
+int matEqual(double* restrict A, double* restrict B, const int size, const double tol);
 
-void printArray(double *array, int size);
+void printMatrix(double* restrict Matrix, const int size);
+
+void printArray(double* restrict array, const int size);
 
 double get_wall_seconds();
 
