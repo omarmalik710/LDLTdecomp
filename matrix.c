@@ -5,7 +5,7 @@
 #include <pmmintrin.h>
 #include "matrix.h"
 
-LD_pair cholDecomp_LD(double* restrict A, const int size) {
+LD_pair LDLTdecomp(double* restrict A, const int size) {
 
     double *L = (double *)calloc(size*size,sizeof(double));
     double *D = (double *)malloc(size*sizeof(double));
@@ -83,7 +83,7 @@ LD_pair cholDecomp_LD(double* restrict A, const int size) {
     return LD;
 }
 
-LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int blockSize) {
+LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSize) {
 
     if (blockSize%UNROLL_FACT != 0) {
         printf("[ERROR] Size of cache block (%d) not divisible"

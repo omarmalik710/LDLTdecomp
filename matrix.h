@@ -8,9 +8,9 @@ typedef struct LD_pair {
 #define ELEMS_PER_REG 2
 #define UNROLL_FACT 4
 
-LD_pair cholDecomp_LD(double* restrict A, const int size);
+LD_pair LDLTdecomp(double* restrict A, const int size);
 
-LD_pair cholDecomp_LD_blocks(double* restrict A, const int size, const int blockSize);
+LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSize);
 
 double *transpose(double* restrict A, const int size);
 

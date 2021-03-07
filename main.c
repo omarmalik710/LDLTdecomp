@@ -16,8 +16,8 @@ int main() {
     //double* restrict A __attribute__((aligned (XMM_ALIGNMENT_BYTES)));
 
     double *A = randHerm(size);
-    LD_pair LD = cholDecomp_LD(A, size);
-    //LD_pair LD = cholDecomp_LD_blocks(A, size, blockSize);
+    LD_pair LD = LDLTdecomp(A, size);
+    //LD_pair LD = LDLTdecomp_blocks(A, size, blockSize);
     //double *LxD = matMulDiag(LD.L, LD.D, size);
     //double *LT = transpose(LD.L, size);
     //double *LxDxLT = matMul(LxD,LT, size);
@@ -56,7 +56,7 @@ int main() {
 
     //int size = 5;
     //double *A = randHerm(size);
-    //double *L = cholDecomp(A, size);
+    //double *L = LDLTdecomp(A, size);
     //double *LT = transpose(L, size);
     //double *LLT = matMul(L,LT, size);
 
