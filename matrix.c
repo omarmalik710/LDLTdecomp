@@ -15,17 +15,19 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
     double Dj;
     double factor;
 
+    // 128-bit vector registers that each store 2 doubles (64 bits per double).
     __m128d factor_v;
-    __m128d Aij_v[2], Lij_v[2], Lik_v[2];
+    __m128d Aij_v[2], Lij_v[2], Lik_v[2]; // Vectors of 2 128-bit registers.
 
     int i,j,k;
-    int iVectRemain, kUnRollRemain;
+    int iVectRemain, kUnrollRemain; // Remainders for vectorization and loop unrolling.
     for (j=0; j<size; j++) {
 
         //time1 = get_wall_seconds();
-        kUnRollRemain = j%UNROLL_FACT;
+        kUnrollRemain = j%UNROLL_FACT;
         Dj = A[j+size*j];
-        for (k=0; k<kUnRollRemain; k++) {
+        // Deal with the remainder terms first, then loop unroll afterwards.
+        for (k=0; k<kUnrollRemain; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
         for (k; k<j; k+=UNROLL_FACT) {
@@ -39,9 +41,14 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
         //timeDj = get_wall_seconds() - time1;
 
         //time1 = get_wall_seconds();
+        // The i-loops go from 'j+1' to 'size', so we need to iterate
+        // over the remainder of their difference with the total number
+        // of elements in the vector registers first. (Two registers are
+        // used in each iteration here.) Then we can vectorize the rest.
         iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
         L[j+size*j] = 1.0;
         for (k=0; k<j; k++) {
+            // Calculate the (negative) Lik*Ljk*Dk sums.
             factor = L[j+size*k]*D[k];
             factor_v = _mm_set1_pd(factor);
             for (i=j+1; i<(iVectRemain+(j+1)); i++) {
@@ -60,6 +67,8 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
             }
         }
 
+        // After calculating the (negative) Lik*Ljk*Dk sums,
+        // add Aij to them and divide the result by Dj.
         iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
         factor_v = _mm_set1_pd(Dj);
         for (i=j+1; i<(iVectRemain+(j+1)); i++) {
@@ -108,16 +117,18 @@ LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSiz
     int numBlocks, blockRemain;
     int iBlock, iStart;
 
+    // 128-bit vector registers that each store 2 doubles (64 bits per double).
     __m128d factor_v;
-    __m128d Aij_v[2], Lij_v[2], Lik_v[2];
+    __m128d Aij_v[2], Lij_v[2], Lik_v[2]; // Vectors of 2 128-bit registers.
 
     int i,j,k;
-    int iVectRemain, kUnrollRemain;
+    int iVectRemain, kUnrollRemain; // Remainders for vectorization and loop unrolling.
     for (j=0; j<size; j++) {
 
         time1 = get_wall_seconds();
         kUnrollRemain = j%UNROLL_FACT;
         Dj = A[j+size*j];
+        // Deal with the remainder terms first, then loop unroll afterwards.
         for (k=0; k<kUnrollRemain; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
         }
@@ -132,22 +143,25 @@ LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSiz
         timeDj = get_wall_seconds() - time1;
 
         time1 = get_wall_seconds();
+
+        // The block loops go from 'j+1' to 'size', so we need to iterate
+        // over the remainder of their difference with the total number
+        // of elements in the vector registers first. (Two registers are
+        // used in each iteration here.) Then we can vectorize the rest.
         L[j+size*j] = 1.0;
         numBlocks = (size-(j+1))/blockSize;
         blockRemain = (size-(j+1))%blockSize;
-
         for (k=0; k<j; k++) {
 
-            // Loop over the block remainder first. If block
-            // remainder is 0, then this nested loop is skipped.
+            // Calculate the (negative) Lik*Ljk*Dk sums for any
+            // remainder rows before looping over the blocks.
             factor = L[j+size*k]*D[k];
             for (i=j+1; i<((j+1)+blockRemain); i++) {
                 L[i+size*j] -= L[i+size*k]*factor;
             }
 
-            // Loop over the blocks from "(j+1) + block remainder" to
-            // the last row. If block remainder is 0, then this nested
-            // loop starts from j+1 instead.
+            // Loop over the rest of the rows in blocks and
+            // calculate their (negative) Lik*Ljk*Dk sums.
             factor_v = _mm_set1_pd(factor);
             for (iBlock=0; iBlock<numBlocks; iBlock++) {
                 iStart=iBlock*blockSize + ((j+1)+blockRemain);
@@ -165,6 +179,8 @@ LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSiz
             }
         }
 
+        // After calculating the (negative) Lik*Ljk*Dk sums,
+        // add Aij to them and divide the result by Dj.
         iVectRemain = (size-(j+1))%(2*ELEMS_PER_REG);
         factor_v = _mm_set1_pd(Dj);
         for (i=j+1; i<(iVectRemain+(j+1)); i++) {
@@ -226,6 +242,8 @@ double *randHerm(const int size) {
     srand((unsigned) time(&t));
     int i,j;
     for (i=0; i<size; i++) {
+        // Ensure that the diagonal elements are larger than the rest
+        // to get a more likely (semi-)positive definite Hermitian matrix.
         Matrix[i+size*i] = rand()%20;
         for (j=i+1; j<size; j++) {
             Matrix[i+size*j] = rand()%5;
