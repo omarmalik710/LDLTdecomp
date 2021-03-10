@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 #include <math.h>
 #include <pmmintrin.h>
 #include <pthread.h>
@@ -20,22 +20,13 @@ LD_pair LDLTdecomp(double* restrict A, const int size) {
     __m128d Aij_v[2], Lij_v[2], Lik_v[2]; // Vectors of 2 128-bit registers.
 
     int i,j,k;
-    int iVectRemain, kUnrollRemain; // Remainders for vectorization and loop unrolling.
+    int iVectRemain; // Remainder for vectorization.
     for (j=0; j<size; j++) {
 
         //time1 = get_wall_seconds();
-        kUnrollRemain = j%UNROLL_FACT;
         Dj = A[j+size*j];
-        // Deal with the remainder terms first, then loop unroll afterwards.
-        for (k=0; k<kUnrollRemain; k++) {
+        for (k=0; k<j; k++) {
             Dj -= L[j+size*k]*L[j+size*k]*D[k];
-        }
-        for (k; k<j; k+=UNROLL_FACT) {
-            Dj -= L[j+size*k]*L[j+size*k]*D[k];
-            Dj -= L[j+size*(k+1)]*L[j+size*(k+1)]*D[k+1];
-            Dj -= L[j+size*(k+2)]*L[j+size*(k+2)]*D[k+2];
-            Dj -= L[j+size*(k+3)]*L[j+size*(k+3)]*D[k+3];
-            Dj -= L[j+size*(k+4)]*L[j+size*(k+4)]*D[k+4];
         }
         D[j] = Dj;
         //timeDj = get_wall_seconds() - time1;
