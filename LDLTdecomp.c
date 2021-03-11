@@ -1,100 +1,187 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
+#include <pmmintrin.h>
 #include "matrix.h"
+
+int numThreads;
+int waitingThreadsCount = 0;
+pthread_mutex_t lock;
+pthread_cond_t signal;
 
 int main(int argc, char **argv) {
     double time1, time2;
 
-    int size;
+    int N;
     int blockSize;
     switch (argc) {
         case 2:
-            size = atoi(argv[1]);
+            N = atoi(argv[1]);
             blockSize = 10;
+            numThreads = 1;
             break;
         case 3:
-            size = atoi(argv[1]);
+            N = atoi(argv[1]);
             blockSize = atoi(argv[2]);
+            numThreads = 1;
+            break;
+        case 4:
+            N = atoi(argv[1]);
+            blockSize = atoi(argv[2]);
+            numThreads = atoi(argv[3]);
             break;
         default:
-            size = 2e3;
+            N = 2e3;
             blockSize = 10;
-    }
-    if (size%blockSize != 0) {
-        printf("[ERROR] Matrix size %dx%d not divisible by block size %dx%d!\n", size,size, blockSize,blockSize);
-        exit(1);
+            numThreads = 1;
     }
 
-    //double* restrict A __attribute__((aligned (XMM_ALIGNMENT_BYTES)));
+    double *A = randHerm(N);
+    double *L = (double *) _mm_malloc(N*N*sizeof(double), 16);
+    for (int j=0; j<N; j++) {
+        for (int i=0; i<N; i++) { L[i+N*j] = 0.0; }
+    }
+    double *D = (double *) _mm_malloc(N*sizeof(double), 16);
+    for (int j=0; j<N; j++) { D[j] = 0.0; }
 
-    double *A = randHerm(size);
-    time1 = get_wall_seconds();
-    //LD_pair LD = LDLTdecomp(A, size);
-    LD_pair LD = LDLTdecomp_blocks(A, size, blockSize);
-    time2 = get_wall_seconds();
-    printf("%lf\n", time2-time1);
-    //double *LxD = matMulDiag(LD.L, LD.D, size);
-    //double *LT = transpose(LD.L, size);
-    //double *LxDxLT = matMul(LxD,LT, size);
-    //double *LxD = matMulDiag_blocks(LD.L, LD.D, size, blockSize);
-    //double *LT = transpose_blocks(LD.L, size, blockSize);
-    //double *LxDxLT = matMul_blocks(LxD,LT, size, blockSize);
+    pthread_t *threads = (pthread_t *)malloc(numThreads*sizeof(pthread_t));
+    thrArgs *args = (thrArgs *)malloc(numThreads*sizeof(thrArgs));
 
-    //printf("A =\n");
-    //printMatrix(A, size);
-    //putchar('\n');
+    for (int n=0; n<numThreads; n++) {
+        args[n].A = A; args[n].D = D; args[n].L = L;
+        args[n].N = N; args[n].thrID = n;
+    }
 
-    //printf("L =\n");
-    //printMatrix(LD.L, size);
-    //putchar('\n');
+    pthread_mutex_init(&lock, NULL);
+    pthread_cond_init(&signal, NULL);
 
-    //printf("LT = \n");
-    //printMatrix(LT, size);
-    //putchar('\n');
+    // Handle part of A that can be distributed evenly amongst
+    // the threads.
+    int iItersCutoff = 1;
+    int minThreadElems = iItersCutoff*ELEMS_PER_iITER;
+    int threadRemain = numThreads*minThreadElems;
+    double Dj;
+    int j, k;
+    for (j=0; j<(N-threadRemain); j++) {
+        //printf("[MASTER] j = %d\n", j);
+        //time1 = get_wall_seconds();
+        Dj = A[j+N*j];
+        for (k=0; k<j; k++) {
+            Dj -= L[j+N*k]*L[j+N*k]*D[k];
+        }
+        D[j] = Dj;
+        L[j+N*j] = 1.0;
+        for (int n=0; n<numThreads; n++) {
+            args[n].j = j;
+            args[n].i1 = n*(N-j)/numThreads + (j+1);
+            args[n].i2 = args[n].i1 + (N-j)/numThreads;
+            printf("[THREAD %d] i1 = %d, i2 = %d\n", n, args[n].i1, args[n].i2);
+        }
+        for (int n=0; n<numThreads; n++) {
+            //args[n].j = j;
+            //args[n].i1 = n*(N-j)/numThreads + (j+1);
+            //args[n].i2 = args[n].i1 + (N-j)/numThreads;
+            pthread_create(threads+n, NULL, calcLij_thread, (void *) (args+n));
+        }
 
-    //printf("D = \n");
-    //printArray(LD.D, size);
+        for (int n=0; n<numThreads; n++) {
+            pthread_join(threads[n], NULL);
+        }
+    }
 
-    //printf("L*D*LT =\n");
-    //printMatrix(LxDxLT, size);
+    // From this point on, I deduce that the number of
+    // elements remaining isn't worth the overhead for
+    // repeated thread creation/destruction, so the master
+    // thread (this one) finishes the remaining decomposition.
 
-    //if (matEqual(A, LxDxLT, size, 1e-12)) {
-    //    printf("A = L*D*LT :D\n");
-    //} else { printf("A != L*D*LT :(\n"); }
+    // 128-bit vector registers that each storeu 2 doubles (64 bits per double).
+    __m128d factor_v;
+    __m128d Aij_v[2], Lij_v[2], Lik_v[2]; // Vectors of 2 128-bit registers.
 
-    free(A);
-    free(LD.L);
-    free(LD.D);
-    //free(LT);
-    //free(LxD);
-    //free(LxDxLT);
+    double factor;
+    int i;
+    int iVectRemain; // Remainder for vectorization.
+    for (j; j<N; j++) {
 
-    //int size = 5;
-    //double *A = randHerm(size);
-    //double *L = LDLTdecomp(A, size);
-    //double *LT = transpose(L, size);
-    //double *LLT = matMul(L,LT, size);
+        //printf("[MASTER] j = %d\n", j);
+        Dj = A[j+N*j];
+        for (k=0; k<j; k++) {
+            Dj -= L[j+N*k]*L[j+N*k]*D[k];
+        }
+        D[j] = Dj;
 
-    //printf("A =\n");
-    //printMatrix(A, size);
-    //putchar('\n');
+        // The i-loops go from 'j+1' to 'N', so we need to iterate
+        // over the remainder of their difference with the total number
+        // of elements in the vector registers first. (Two registers are
+        // used in each iteration here.) Then we can vectorize the rest.
+        iVectRemain = (N-(j+1))%ELEMS_PER_iITER;
+        L[j+N*j] = 1.0;
+        for (k=0; k<j; k++) {
+            // Calculate the (negative) Lik*Ljk*Dk sums.
+            factor = L[j+N*k]*D[k];
+            factor_v = _mm_set1_pd(factor);
+            for (i=j+1; i<(iVectRemain+(j+1)); i++) {
+                L[i+N*j] -= L[i+N*k]*factor;
+            }
+            for (i; i<N; i+=ELEMS_PER_iITER) {
+                Lij_v[0] = _mm_loadu_pd(L+(i+N*j));
+                Lik_v[0] = _mm_loadu_pd(L+(i+N*k));
+                Lij_v[0] = _mm_sub_pd(Lij_v[0], _mm_mul_pd(Lik_v[0],factor_v));
+                _mm_storeu_pd(L+(i+N*j), Lij_v[0]);
 
-    //printf("L =\n");
-    //printMatrix(L, size);
-    //putchar('\n');
+                Lij_v[1] = _mm_loadu_pd(L+(i+N*j)+ELEMS_PER_REG);
+                Lik_v[1] = _mm_loadu_pd(L+(i+N*k)+ELEMS_PER_REG);
+                Lij_v[1] = _mm_sub_pd(Lij_v[1], _mm_mul_pd(Lik_v[1],factor_v));
+                _mm_storeu_pd(L+(i+N*j)+ELEMS_PER_REG, Lij_v[1]);
+            }
+        }
 
-    //printf("L*LT =\n");
-    //printMatrix(LLT, size);
+        // After calculating the (negative) Lik*Ljk*Dk sums,
+        // add Aij to them and divide the result by Dj.
+        factor_v = _mm_set1_pd(Dj);
+        for (i=j+1; i<(iVectRemain+(j+1)); i++) {
+            L[i+N*j] = (L[i+N*j] + A[i+N*j])/Dj;
+        }
+        for (i; i<N; i+=ELEMS_PER_iITER) {
+            Lij_v[0] = _mm_loadu_pd(L+(i+N*j));
+            Aij_v[0] = _mm_loadu_pd(A+(i+N*j));
+            Lij_v[0] = _mm_div_pd(_mm_add_pd(Lij_v[0],Aij_v[0]), factor_v);
+            _mm_storeu_pd(L+(i+N*j), Lij_v[0]);
 
-    //if (matEqual(A, LLT, size, 1e-12)) {
-    //    printf("A = L*LT :D\n");
-    //} else { printf("A != L*LT :(\n"); }
+            Lij_v[1] = _mm_loadu_pd(L+(i+N*j)+ELEMS_PER_REG);
+            Aij_v[1] = _mm_loadu_pd(A+(i+N*j)+ELEMS_PER_REG);
+            Lij_v[1] = _mm_div_pd(_mm_add_pd(Lij_v[1],Aij_v[1]), factor_v);
+            _mm_storeu_pd(L+(i+N*j)+ELEMS_PER_REG, Lij_v[1]);
+        }
+    }
 
-    //free(A);
-    //free(L);
-    //free(LT);
-    //free(LLT);
+    double *LxD = matMulDiag(L, D, N);
+    double *LT = transpose(L, N);
+    double *LxDxLT = matMul(LxD,LT, N);
+
+    printf("A =\n");
+    printMatrix(A, N);
+    putchar('\n');
+
+    printf("D = \n");
+    printArray(D, N);
+
+    printf("L*D*LT =\n");
+    printMatrix(LxDxLT, N);
+
+    if (matEqual(A, LxDxLT, N, 1e-12)) {
+        printf("A = L*D*LT :D\n");
+    } else { printf("A != L*D*LT :(\n"); }
+
+    pthread_mutex_destroy(&lock);
+    pthread_cond_destroy(&signal);
+
+    _mm_free(A);
+    _mm_free(D);
+    _mm_free(L);
+    free(threads);
+    free(args);
 
     return 0;
 }

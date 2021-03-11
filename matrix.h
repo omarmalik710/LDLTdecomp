@@ -5,34 +5,46 @@ typedef struct LD_pair {
     double *D;
 } LD_pair;
 
+typedef struct thread_args {
+    double *L, *D, *A;
+    int j;
+    int N;
+    int i1, i2;
+    int thrID;
+} thrArgs;
+
 #define ELEMS_PER_REG 2
+#define REGS_PER_iITER 2
+#define ELEMS_PER_iITER 4
 #define UNROLL_FACT 4
 
-LD_pair LDLTdecomp(double* restrict A, const int size);
+void *calcLij_thread(void *myArgs);
 
-LD_pair LDLTdecomp_blocks(double* restrict A, const int size, const int blockSize);
+LD_pair LDLTdecomp(double* restrict A, const int N);
 
-double *transpose(double* restrict A, const int size);
+LD_pair LDLTdecomp_blocks(double* restrict A, const int N, const int blockSize);
 
-double *transpose_blocks(double* restrict A, const int size, const int blockSize);
+double *transpose(double* restrict A, const int N);
 
-double *randHerm(const int size);
+double *transpose_blocks(double* restrict A, const int N, const int blockSize);
 
-int isHerm(double* restrict Matrix, const int size);
+double *randHerm(const int N);
 
-double *matMul(double* restrict A, double* restrict B, const int size);
+int isHerm(double* restrict Matrix, const int N);
 
-double *matMul_blocks(double* restrict A, double* restrict B, const int size, const int blockSize);
+double *matMul(double* restrict A, double* restrict B, const int N);
 
-double *matMulDiag(double* restrict A, double *D, const int size);
+double *matMul_blocks(double* restrict A, double* restrict B, const int N, const int blockSize);
 
-double *matMulDiag_blocks(double* restrict A, double *D, const int size, const int blockSize);
+double *matMulDiag(double* restrict A, double *D, const int N);
 
-int matEqual(double* restrict A, double* restrict B, const int size, const double tol);
+double *matMulDiag_blocks(double* restrict A, double *D, const int N, const int blockSize);
 
-void printMatrix(double* restrict Matrix, const int size);
+int matEqual(double* restrict A, double* restrict B, const int N, const double tol);
 
-void printArray(double* restrict array, const int size);
+void printMatrix(double* restrict Matrix, const int N);
+
+void printArray(double* restrict array, const int N);
 
 double get_wall_seconds();
 
