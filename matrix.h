@@ -7,9 +7,7 @@ typedef struct LD_pair {
 
 typedef struct thread_args {
     double *L, *D, *A;
-    int j;
     int N;
-    int i1, i2;
     int thrID;
 } thrArgs;
 
@@ -17,6 +15,8 @@ typedef struct thread_args {
 #define REGS_PER_iITER 2
 #define ELEMS_PER_iITER 4
 #define UNROLL_FACT 4
+
+void barrier();
 
 void *calcLij_thread(void *myArgs);
 
