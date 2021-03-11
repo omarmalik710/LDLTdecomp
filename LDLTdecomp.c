@@ -16,8 +16,6 @@ int main(int argc, char **argv) {
     double time1, time2;
 
     int N;
-    int blockSize;
-    int iItersCutoff;
     switch (argc) {
         case 2:
             N = atoi(argv[1]);
@@ -76,7 +74,7 @@ int main(int argc, char **argv) {
     }
 
     time2 = get_wall_seconds();
-    printf("[INFO] Time taken = %lf seconds.\n", time2-time1);
+    printf("%lf\n", time2-time1);
 
     #if TESTPRINT
     double *LxD = matMulDiag(L, D, N);

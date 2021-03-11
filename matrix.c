@@ -94,6 +94,7 @@ void *calcLij_thread(void *myArgs) {
         }
     }
 
+    return NULL;
 }
 double *transpose(double* restrict A, const int N) {
     double* restrict AT = (double *)calloc(N*N,sizeof(double));
