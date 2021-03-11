@@ -5,7 +5,7 @@
 #include <pmmintrin.h>
 #include "matrix.h"
 
-#define TESTPRINT 0
+#define TESTPRINT 1
 
 int numThreads;
 volatile int waitingThreadsCount = 0;
@@ -23,21 +23,19 @@ int main(int argc, char **argv) {
             break;
         case 3:
             N = atoi(argv[1]);
-            numThreads = 1;
+            numThreads = atoi(argv[2]);
             break;
         default:
             N = 2e3;
-            numThreads = 1;
+            numThreads = 2;
     }
 
     double *A = randHerm(N);
     time1 = get_wall_seconds();
-    //double *L = (double *) _mm_malloc(N*N*sizeof(double), 16);
     double *L = (double *) malloc(N*N*sizeof(double));
     for (int j=0; j<N; j++) {
         for (int i=0; i<N; i++) { L[i+N*j] = 0.0; }
     }
-    //double *D = (double *) _mm_malloc(N*sizeof(double), 16);
     double *D = (double *) malloc(N*sizeof(double));
     for (int j=0; j<N; j++) { D[j] = 0.0; }
 

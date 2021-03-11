@@ -127,7 +127,6 @@ double *transpose_blocks(double* restrict A, const int N, const int blockSize) {
 
 double *randHerm(const int N) {
     double* Matrix = (double *) malloc(N*N*sizeof(double));
-    //double *Matrix = (double *) _mm_malloc(N*N*sizeof(double), 16);
 
     time_t t;
     srand((unsigned) time(&t));
