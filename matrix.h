@@ -1,9 +1,5 @@
 #ifndef MATRIX_H
 #define MATRIX_H
-typedef struct LD_pair {
-    double *L;
-    double *D;
-} LD_pair;
 
 typedef struct thread_args {
     double *L, *D, *A;
@@ -19,10 +15,6 @@ typedef struct thread_args {
 void barrier();
 
 void *calcLij_thread(void *myArgs);
-
-LD_pair LDLTdecomp(double* restrict A, const int N);
-
-LD_pair LDLTdecomp_blocks(double* restrict A, const int N, const int blockSize);
 
 double *transpose(double* restrict A, const int N);
 
