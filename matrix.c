@@ -65,24 +65,25 @@ void *calcLij_thread(void *myArgs) {
 
     // After calculating the (negative) Lik*Ljk*Dk sums,
     // add Aij to them and divide the result by Dj.
-    //const double Dj = D[j];
-    //factor_v = _mm_set1_pd(Dj);
-    //for (i=i1; i<(iVectRemain+(i1)); i++) {
-    //    L[i+N*j] = (L[i+N*j] + A[i+N*j])/Dj;
-    //}
-    //for (i; i<i2; i+=ELEMS_PER_iITER) {
-    //    Lij_v[0] = _mm_loadu_pd(L+(i+N*j));
-    //    Aij_v[0] = _mm_loadu_pd(A+(i+N*j));
-    //    Lij_v[0] = _mm_div_pd(_mm_add_pd(Lij_v[0],Aij_v[0]), factor_v);
-    //    _mm_storeu_pd(L+(i+N*j), Lij_v[0]);
+    double Dj = D[j];
+    factor_v = _mm_set1_pd(Dj);
+    for (i=i1; i<(iVectRemain+(i1)); i++) {
+        //printf("[THREAD %d] i = %d, j = %d\n", args->thrID, i, j);
+        L[i+N*j] = (L[i+N*j] + A[i+N*j])/Dj;
+    }
+    for (i; i<i2; i+=ELEMS_PER_iITER) {
+        //printf("[THREAD %d] VECT i = %d, j = %d\n", args->thrID, i, j);
+        Lij_v[0] = _mm_loadu_pd(L+(i+N*j));
+        Aij_v[0] = _mm_loadu_pd(A+(i+N*j));
+        Lij_v[0] = _mm_div_pd(_mm_add_pd(Lij_v[0],Aij_v[0]), factor_v);
+        _mm_storeu_pd(L+(i+N*j), Lij_v[0]);
 
-    //    Lij_v[1] = _mm_loadu_pd(L+(i+N*j)+ELEMS_PER_REG);
-    //    Aij_v[1] = _mm_loadu_pd(A+(i+N*j)+ELEMS_PER_REG);
-    //    Lij_v[1] = _mm_div_pd(_mm_add_pd(Lij_v[1],Aij_v[1]), factor_v);
-    //    _mm_storeu_pd(L+(i+N*j)+ELEMS_PER_REG, Lij_v[1]);
-    //}
+        Lij_v[1] = _mm_loadu_pd(L+(i+N*j)+ELEMS_PER_REG);
+        Aij_v[1] = _mm_loadu_pd(A+(i+N*j)+ELEMS_PER_REG);
+        Lij_v[1] = _mm_div_pd(_mm_add_pd(Lij_v[1],Aij_v[1]), factor_v);
+        _mm_storeu_pd(L+(i+N*j)+ELEMS_PER_REG, Lij_v[1]);
+    }
 
-    barrier();
 }
 
 LD_pair LDLTdecomp(double* restrict A, const int N) {
