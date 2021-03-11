@@ -5,7 +5,7 @@
 #include <pmmintrin.h>
 #include "matrix.h"
 
-#define TESTPRINT 1
+#define TESTPRINT 0
 
 int numThreads;
 volatile int waitingThreadsCount = 0;
