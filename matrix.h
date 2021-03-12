@@ -20,7 +20,7 @@ double *transpose(double* restrict A, const int N);
 
 double *transpose_blocks(double* restrict A, const int N, const int blockSize);
 
-double *randHerm(const int N);
+double *randSymm(const int N);
 
 int isHerm(double* restrict Matrix, const int N);
 

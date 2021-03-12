@@ -30,21 +30,25 @@ int main(int argc, char **argv) {
             numThreads = 2;
     }
 
-    double *A = randHerm(N);
-    time1 = get_wall_seconds();
-    double *L = (double *) malloc(N*N*sizeof(double));
-    for (int j=0; j<N; j++) {
-        for (int i=0; i<N; i++) { L[i+N*j] = 0.0; }
-    }
-    double *D = (double *) malloc(N*sizeof(double));
-    for (int j=0; j<N; j++) { D[j] = 0.0; }
+    // Generate a random symmetric matrix.
+    double *A = randSymm(N);
 
+    // Start timing the LDLT decomposition.
+    time1 = get_wall_seconds();
+
+    // Initialize L and D.
+    double *L = (double *) calloc(N*N,sizeof(double));
+    double *D = (double *) calloc(N,sizeof(double));
+
+    // Initialize each thread and its corresponding arguments.
     pthread_t *threads = (pthread_t *)malloc(numThreads*sizeof(pthread_t));
     thrArgs *args = (thrArgs *)malloc(numThreads*sizeof(thrArgs));
 
+    // Get the locks and signals ready.
     pthread_mutex_init(&threadLock, NULL);
     pthread_cond_init(&threadSignal, NULL);
 
+    // Set the threads loose.
     int j, k;
     for (int n=0; n<numThreads; n++) {
         args[n].A = A;
@@ -59,6 +63,10 @@ int main(int argc, char **argv) {
     for (j=0; j<N; j++) {
         //printf("[INFO] (N-(j+1))/numThreads = %d\n", (N-(j+1))/numThreads);
         //printf("[MASTER] j = %d\n", j);
+
+        // 1st barrier: wait for all threads at the start of
+        // each j iteration. Otherwise, a thread might use
+        // Dj before the master thread finishes calculating it!
         barrier();
         Dj = A[j+N*j];
         for (k=0; k<j; k++) {
@@ -66,6 +74,9 @@ int main(int argc, char **argv) {
         }
         D[j] = Dj;
         L[j+N*j] = 1.0;
+
+        // 2nd barrier: wait for the threads to calculate Lij.
+        // These are needed to calculate the next Dj and Lij!
         //printf("[MASTER] Now waiting for minions...\n");
         barrier();
         //printf("[MASTER] Waiting done. Back to work!\n");

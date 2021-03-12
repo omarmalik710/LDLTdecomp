@@ -13,6 +13,9 @@ extern pthread_cond_t threadSignal;
 void barrier() {
     pthread_mutex_lock(&threadLock);
     waitingThreadsCount++;
+    // If all threads including master are here,
+    // then wake them all up and proceed. Otherwise
+    // sleep.
     if (waitingThreadsCount == (numThreads+1)) {
         waitingThreadsCount = 0;
         pthread_cond_broadcast(&threadSignal);
@@ -32,7 +35,7 @@ void *calcLij_thread(void *myArgs) {
     double *D = args->D;
     double *L = args->L;
 
-    // 128-bit vector registers that each storeu 2 doubles (64 bits per double).
+    // 128-bit vector registers that each stores 2 doubles (64 bits per double).
     __m128d factor_v;
     __m128d Aij_v[2], Lij_v[2], Lik_v[2]; // Vectors of 2 128-bit registers.
 
@@ -123,7 +126,7 @@ double *transpose_blocks(double* restrict A, const int N, const int blockSize) {
     return AT;
 }
 
-double *randHerm(const int N) {
+double *randSymm(const int N) {
     double* Matrix = (double *) malloc(N*N*sizeof(double));
 
     time_t t;
