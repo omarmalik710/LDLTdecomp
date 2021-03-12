@@ -134,7 +134,7 @@ double *randSymm(const int N) {
     int i,j;
     for (i=0; i<N; i++) {
         // Ensure that the diagonal elements are larger than the rest
-        // to get a more likely (semi-)positive definite Hermitian matrix.
+        // to get a more likely (semi-)positive definite symmetric matrix.
         Matrix[i+N*i] = rand()%20;
         for (j=i+1; j<N; j++) {
             Matrix[i+N*j] = rand()%5;
