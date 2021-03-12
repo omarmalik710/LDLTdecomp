@@ -19,8 +19,5 @@ LDLTdecomp.o: LDLTdecomp.c matrix.c matrix.h
 matrix.o: matrix.c matrix.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c matrix.c
 
-#utils.o: utils.c utils.h constants.h graphics.h
-#	$(CC) $(CFLAGS) $(INCLUDES) -c utils.c
-
 clean:
 	$(RM) $(EXEC) $(OBJS)
