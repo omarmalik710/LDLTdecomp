@@ -1,2 +1,2 @@
 # LDLT
-Parallel implementation of the LDLT decomposition. Project for the High Performance Programming course at Uppsala University.
+Project done during the course "High Performance Programming" at Uppsala University. Parallel implementation of the LDLT decomposition.
